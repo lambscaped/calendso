@@ -1,16 +1,81 @@
 # this file is a helper to run calendso locally
 # starts a postgres instance on port 5450 to use as a local db
-version: "3.6"
+# version: "3.6"
+# services:
+#  postgres:
+#    image: postgres:13
+#    ports:
+#      - "5450:5432" # expose pg on port 5450 to not collide with pg from elswhere
+#    restart: always
+#    volumes:
+#      - db_data:/var/lib/postgresql/data
+#    environment:
+#      POSTGRES_PASSWORD: ""
+#      POSTGRES_HOST_AUTH_METHOD: trust
+#volumes:
+#  db_data:
+# Use postgres/example user/password credentials
+se postgres/example user/password credentials
+
+version: '3.8'
+
+volumes:
+  database-data:
+
+networks:
+  stack:
+    name: stack
+    external: true
+
 services:
-  postgres:
-    image: postgres:13
-    ports:
-      - "5450:5432" # expose pg on port 5450 to not collide with pg from elswhere
+  database:
+    container_name: database
+    image: postgres
     restart: always
     volumes:
-      - db_data:/var/lib/postgresql/data
+      - database-data:/var/lib/postgresql/data/
+    env_file: .env
+    networks:
+      - stack
+
+  calcom:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        NEXT_PUBLIC_WEBAPP_URL: http://calcom.sergioleyva.website:3000
+        NEXT_PUBLIC_LICENSE_CONSENT: agree
+        CALCOM_TELEMETRY_DISABLED: 1
+        NEXTAUTH_SECRET: lKSPxahnQ7e0i0UPJTSlcjcG6CYS2A5/J5gnvHhbWXE
+        CALENDSO_ENCRYPTION_KEY: 2a$12$EUVBmqtHf5HbjqYBiBFhW.E8hbBDqxtLuAPjIRUKM4lgpy2I8mpKm
+        DATABASE_URL: postgresql://controversial:0vIvNrbh7in%2NOghgSc9enTdMo0@database:5450/calendso
+      network: stack
+    restart: always
+    networks:
+      - stack
+    ports:
+      - 3000:3000
+    env_file: .env
     environment:
-      POSTGRES_PASSWORD: ""
-      POSTGRES_HOST_AUTH_METHOD: trust
-volumes:
-  db_data:
+      - DATABASE_URL=postgresql://controversial:0vIvNrbh7in%2NOghgSc9enTdMo0@database:5450/calendso
+    depends_on:
+      - database
+
+# Optional use of Prisma Studio. In production, comment out or remove the section below to prevent unwanted access to your database.
+#  studio:
+#    image: calendso/calendso:latest
+#    restart: always
+#    networks:
+#      - stack
+#    ports:
+#      - 5555:5555
+#    env_file: .env
+#    environment:
+#      - DATABASE_URL=postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@${DATABASE_HOST}/${POSTGRES_DB}
+#    depends_on:
+#      - database
+#    command:
+#      - npx
+#      - prisma
+#      - studio
+# END SECTION: Optional use of Prisma Studio.
